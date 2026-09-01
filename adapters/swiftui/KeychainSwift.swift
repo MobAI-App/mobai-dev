@@ -4,13 +4,13 @@
 
 import Foundation
 
-public enum KeychainSwiftAccessOptions {
+nonisolated public enum KeychainSwiftAccessOptions {
   case accessibleAfterFirstUnlock
   case accessibleWhenUnlocked
   case accessibleAlways
 }
 
-public final class KeychainSwift {
+nonisolated public final class KeychainSwift {
   /// One store across instances: the app constructs a fresh KeychainSwift
   /// per access and expects the platform keychain behind all of them.
   nonisolated(unsafe) private static var store: [String: Data] = [:]

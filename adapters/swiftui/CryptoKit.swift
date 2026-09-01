@@ -32,3 +32,20 @@ public enum SHA256 {
     return Digest(bytes: bytes)
   }
 }
+
+/// Inert P256 key agreement: push-notification plumbing constructs keys and
+/// reads their representations; a preview needs the shapes, never the math.
+nonisolated public enum P256 {
+  public enum KeyAgreement {
+    public struct PublicKey: Sendable {
+      public var rawRepresentation: Data { Data(repeating: 0, count: 64) }
+      public var x963Representation: Data { Data(repeating: 4, count: 65) }
+    }
+    public struct PrivateKey: Sendable {
+      public init() {}
+      public init(rawRepresentation: Data) throws {}
+      public var rawRepresentation: Data { Data(repeating: 0, count: 32) }
+      public var publicKey: PublicKey { PublicKey() }
+    }
+  }
+}
