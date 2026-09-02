@@ -26,7 +26,7 @@ application-proven but still need a focused regression fixture.
 | React Native | expo-image | [rn/expo-image.tsx](rn/expo-image.tsx) | Image and ImageBackground over react-native-web, contentFit, placeholder box | no |
 | React Native | react-native-mmkv | [rn/react-native-mmkv.ts](rn/react-native-mmkv.ts) | in-memory MMKV with listeners and the useMMKV* hooks | no |
 | React Native | react-native-svg | [rn/react-native-svg.tsx](rn/react-native-svg.tsx) | primitive elements as DOM svg, SvgXml | no |
-| React Native | expo-font | [rn/expo-font.ts](rn/expo-font.ts) | fonts reported loaded | no |
+| React Native | expo-font | [rn/expo-font.ts](rn/expo-font.ts) | the app's font map loaded for real through @font-face | no |
 | React Native | expo-notifications | [rn/expo-notifications.ts](rn/expo-notifications.ts) | permissions, tokens, listeners and badges on the primitives | no |
 | React Native | @expo/vector-icons | [rn/@expo/vector-icons.tsx](rn/@expo/vector-icons.tsx) | every single-font set from the real glyph maps and fonts (the folder `rn/@expo/vector-icons/` goes with it) | no |
 | Flutter | google_maps_flutter | [flutter/google_maps_flutter.dart](flutter/google_maps_flutter.dart) | GoogleMap placeholder with camera and marker count, markers, BitmapDescriptor | no |
