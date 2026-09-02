@@ -45,7 +45,7 @@ application-proven but still need a focused regression fixture.
 | SwiftUI | BackgroundTasks | [swiftui/BackgroundTasks.swift](swiftui/BackgroundTasks.swift) | inert registration, requests, completion, and cancellation | no |
 | SwiftUI | Bodega | [swiftui/Bodega.swift](swiftui/Bodega.swift) | empty storage reads and non-persistent writes | no |
 | SwiftUI | ButtonKit | [swiftui/ButtonKit.swift](swiftui/ButtonKit.swift) | AsyncButton passthrough | no |
-| SwiftUI | Charts | [swiftui/Charts.swift](swiftui/Charts.swift) | common marks, axes, selection, scales, and empty chart layout | no |
+| SwiftUI | Charts | [swiftui/Charts.swift](swiftui/Charts.swift) | draws area, line, bar, rectangle, rule and point marks from their data, axes as text; selection, gestures, annotations and legends compile and show nothing. Same source the engine ships as its curated stand-in | no |
 | SwiftUI | CodeScanner | [swiftui/CodeScanner.swift](swiftui/CodeScanner.swift) | scanner API and stable placeholder | no |
 | SwiftUI | CoreHaptics | [swiftui/CoreHaptics.swift](swiftui/CoreHaptics.swift) | unavailable haptics hardware | no |
 | SwiftUI | CryptoKit | [swiftui/CryptoKit.swift](swiftui/CryptoKit.swift) | right-shaped keys without cryptography | no |
