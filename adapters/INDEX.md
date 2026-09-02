@@ -15,6 +15,29 @@ application-proven but still need a focused regression fixture.
 | React Native | react-native-image-picker | [rn/react-native-image-picker.ts](rn/react-native-image-picker.ts) | launchCamera, launchImageLibrary | yes |
 | React Native | react-native-maps | [rn/react-native-maps.tsx](rn/react-native-maps.tsx) | MapView and Marker placeholders | no |
 | Flutter | image_picker | [flutter/image_picker.dart](flutter/image_picker.dart) | pickImage and pickMedia | no |
+| React Native | react-native-permissions | [rn/react-native-permissions.ts](rn/react-native-permissions.ts) | check, request, multiple, notifications on the permissions primitive | no |
+| React Native | react-native-device-info | [rn/react-native-device-info.ts](rn/react-native-device-info.ts) | fixed iPhone device values | no |
+| React Native | @react-native-clipboard/clipboard | [rn/@react-native-clipboard/clipboard.ts](rn/@react-native-clipboard/clipboard.ts) | get and set on the clipboard primitive, useClipboard | no |
+| React Native | @notifee/react-native | [rn/@notifee/react-native.ts](rn/@notifee/react-native.ts) | permission through the primitive, no-op local notifications and badges | no |
+| React Native | @sentry/react-native | [rn/@sentry/react-native.tsx](rn/@sentry/react-native.tsx) | no-op init, capture, scope, ErrorBoundary and wrap passthrough | no |
+| React Native | @react-native-firebase/app | [rn/@react-native-firebase/app.ts](rn/@react-native-firebase/app.ts) | default app handle | no |
+| React Native | @react-native-firebase/messaging | [rn/@react-native-firebase/messaging.ts](rn/@react-native-firebase/messaging.ts) | constant token, initial notification from the primitive, quiet listeners | no |
+| React Native | react-native-keyboard-controller | [rn/react-native-keyboard-controller.tsx](rn/react-native-keyboard-controller.tsx) | providers and aware views as plain views, closed keyboard hooks | no |
+| React Native | expo-image | [rn/expo-image.tsx](rn/expo-image.tsx) | Image and ImageBackground over react-native-web, contentFit, placeholder box | no |
+| React Native | react-native-mmkv | [rn/react-native-mmkv.ts](rn/react-native-mmkv.ts) | in-memory MMKV with listeners and the useMMKV* hooks | no |
+| React Native | react-native-svg | [rn/react-native-svg.tsx](rn/react-native-svg.tsx) | primitive elements as DOM svg, SvgXml | no |
+| React Native | expo-font | [rn/expo-font.ts](rn/expo-font.ts) | fonts reported loaded | no |
+| React Native | expo-notifications | [rn/expo-notifications.ts](rn/expo-notifications.ts) | permissions, tokens, listeners and badges on the primitives | no |
+| React Native | @expo/vector-icons | [rn/@expo/vector-icons.tsx](rn/@expo/vector-icons.tsx) | every single-font set from the real glyph maps and fonts (the folder `rn/@expo/vector-icons/` goes with it) | no |
+| Flutter | google_maps_flutter | [flutter/google_maps_flutter.dart](flutter/google_maps_flutter.dart) | GoogleMap placeholder with camera and marker count, markers, BitmapDescriptor | no |
+| Flutter | device_info_plus | [flutter/device_info_plus.dart](flutter/device_info_plus.dart) | fixed iOS, Android and macOS device values | no |
+| Flutter | share_handler | [flutter/share_handler.dart](flutter/share_handler.dart) | data classes, no initial share, quiet stream | no |
+| Flutter | home_widget | [flutter/home_widget.dart](flutter/home_widget.dart) | no-op widget updates | no |
+| Flutter | flutter_displaymode | [flutter/flutter_displaymode.dart](flutter/flutter_displaymode.dart) | no-op refresh rate | no |
+| Flutter | flutter_native_splash | [flutter/flutter_native_splash.dart](flutter/flutter_native_splash.dart) | no-op preserve and remove | no |
+| Flutter | pointer_interceptor | [flutter/pointer_interceptor.dart](flutter/pointer_interceptor.dart) | transparent wrapper | no |
+| Flutter | permission_handler | [flutter/permission_handler.dart](flutter/permission_handler.dart) | every permission granted | no |
+| Flutter | youtube_player_iframe | [flutter/youtube_player_iframe.dart](flutter/youtube_player_iframe.dart) | controller API with a placeholder player | no |
 | SwiftUI | AVFoundation | [swiftui/AVFoundation.swift](swiftui/AVFoundation.swift) | inert players and export sessions | no |
 | SwiftUI | AVKit | [swiftui/AVKit.swift](swiftui/AVKit.swift) | VideoPlayer and CMTime surface | no |
 | SwiftUI | AudioToolbox | [swiftui/AudioToolbox.swift](swiftui/AudioToolbox.swift) | silent system sounds | no |
