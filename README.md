@@ -125,16 +125,20 @@ In the environment settings, set the setup script to:
 curl -fsSL https://mobai.run/cloud/codex.sh | sh
 ```
 
-and put `MOBAI_API_KEY=<your mobai API key>` in the environment's secrets.
+and put `MOBAI_API_KEY=<your mobai API key>` in the environment's secrets, or
+let the agent sign in from the session with an emailed code (free; it creates
+the account when the email is new). `MOBAI_TAILSCALE_KEY` is optional the same
+way: without it the agent asks you to approve a Tailscale login link.
 
 Codex filters outbound traffic as well: the simplest option is full internet
-access, otherwise allow the hosts from the Claude Code section minus the
-Tailscale ones, and expect the list to be incomplete for your project's own
-tooling.
+access, otherwise allow the hosts from the Claude Code section, and expect the
+list to be incomplete for your project's own tooling.
 
-Codex's sandbox blocks the connection a tailnet join needs, so this script
-skips Tailscale. Previews, builds and simulators all work; driving a physical
-phone does not, yet. Use Claude Code or Cursor when the phone is the point.
+Codex's sandbox currently blocks the connection a tailnet join needs. The
+script installs Tailscale and tries anyway, and the agent is told why the join
+fails, so nothing needs re-pasting the day Codex allows it. Previews, builds
+and simulators all work; driving a physical phone does not, yet. Use Claude
+Code or Cursor when the phone is the point.
 
 </details>
 

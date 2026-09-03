@@ -17,17 +17,6 @@ set -eu
 
 echo "mobai setup: Claude Code (installs tools only, you connect in the chat)"
 
-# Pasted into the wrong platform? Codex and Cursor need the other script, the
-# one that joins the tailnet and starts mobai. Their secrets being present is
-# the giveaway, and silently doing nothing is worse than saying so.
-if [ -n "${MOBAI_TAILSCALE_KEY:-}" ] || [ -n "${MOBAI_API_KEY:-}" ]; then
-  echo "" >&2
-  echo "This is the Claude Code script, but MOBAI_TAILSCALE_KEY/MOBAI_API_KEY are set," >&2
-  echo "which means you are probably on Codex or Cursor. Copy the script from that" >&2
-  echo "tab in the mobai cloud wizard instead: this one never starts mobai." >&2
-  exit 1
-fi
-
 BIN="$HOME/.mobai/bin"
 mkdir -p "$BIN"
 case "$(uname -m)" in
@@ -85,150 +74,16 @@ mkdir -p "$HOME/.claude/skills"
 "$BIN/mobai" skills install "$HOME/.claude/skills" >/dev/null 2>&1 \
   || echo "note: could not install the mobai CLI skill" >&2
 
-# 4. Runtime helper. The agent runs this in the session; it is safe to run
-#    repeatedly and stops with instructions when a human step is needed.
-cat > "$BIN/mobai-up" <<'MOBAI_UP'
-#!/bin/sh
-# Bring up the tailnet and mobai for this session.
-set -eu
-BIN="$HOME/.mobai/bin"
-
-if ! "$BIN/tailscale" --socket=/tmp/mobai-ts.sock status >/dev/null 2>&1; then
-  if ! pgrep -f "tailscaled.*mobai-ts.sock" >/dev/null 2>&1; then
-    "$BIN/tailscaled" --tun=userspace-networking \
-      --socks5-server=127.0.0.1:1055 \
-      --state="$HOME/.mobai/ts.state" --socket=/tmp/mobai-ts.sock \
-      >"$HOME/.mobai/tailscaled.log" 2>&1 &
-    sleep 2
-  fi
-
-  # No auth key on this platform: the user approves a login link instead. An
-  # agent's shell only shows output when a command ENDS, so "tailscale up" must
-  # not block here waiting for approval - run it in the background, pull the
-  # URL out of its log, and exit. The backgrounded up finishes the join on its
-  # own the moment the user approves; the next run of this script sails through.
-  UP_LOG="$HOME/.mobai/ts-up.log"
-
-  # A consumed auth path poisons the state. The browser login completes the
-  # node's registration, which retires that one-time auth path; the backgrounded
-  # "up" is still polling it and gets HTTP 410 "auth path not found", then
-  # retries forever. The state file keeps handing back the same dead URL, so
-  # re-running this prints the link the user already approved and nothing ever
-  # works. Only a fresh identity clears it.
-  #
-  # Kill by PID, never "pkill -f ...mobai-ts.sock": that pattern matches the
-  # agent's own shell command line and kills the shell mid-script.
-  if grep -q "auth path not found" "$HOME/.mobai/tailscaled.log" 2>/dev/null; then
-    echo "The previous Tailscale login was already used up, so this node could" >&2
-    echo "never finish joining. Resetting it and getting a fresh link." >&2
-    for pid in $(pgrep -f "tailscaled.*mobai-ts.sock" 2>/dev/null); do
-      kill "$pid" 2>/dev/null || true
-    done
-    rm -f "$HOME/.mobai/ts.state" /tmp/mobai-ts.sock \
-      "$HOME/.mobai/tailscaled.log" "$UP_LOG"
-    sleep 1
-    "$BIN/tailscaled" --tun=userspace-networking --socks5-server=127.0.0.1:1055 \
-      --state="$HOME/.mobai/ts.state" --socket=/tmp/mobai-ts.sock \
-      >"$HOME/.mobai/tailscaled.log" 2>&1 &
-    sleep 2
-  fi
-
-  if ! pgrep -f "tailscale.*mobai-ts.sock up" >/dev/null 2>&1; then
-    "$BIN/tailscale" --socket=/tmp/mobai-ts.sock up \
-      --hostname="mobai-agent-$(hostname | tr -cd 'a-z0-9-' | cut -c1-20)" \
-      >"$UP_LOG" 2>&1 &
-  fi
-
-  i=0
-  while [ $i -lt 20 ]; do
-    if "$BIN/tailscale" --socket=/tmp/mobai-ts.sock status >/dev/null 2>&1; then
-      break
-    fi
-    if grep -o 'https://login\.tailscale\.com/[A-Za-z0-9/_-]*' "$UP_LOG" >/dev/null 2>&1; then
-      echo "Tailscale needs the user's approval. Have them open:"
-      grep -o 'https://login\.tailscale\.com/[A-Za-z0-9/_-]*' "$UP_LOG" | head -1
-      echo "then run this script again."
-      echo "If that link comes back unchanged after they approved it, the login"
-      echo "was consumed: re-run this script and it resets the node itself."
-      exit 1
-    fi
-    i=$((i+1)); sleep 1
-  done
-
-  if ! "$BIN/tailscale" --socket=/tmp/mobai-ts.sock status >/dev/null 2>&1; then
-    echo "tailscale did not come up; see $UP_LOG and $HOME/.mobai/tailscaled.log" >&2
-    exit 1
-  fi
-fi
-
-if ! "$BIN/mobai-dev" login >/dev/null 2>&1; then
-  echo "mobai login needed. Run:"
-  echo "  $BIN/mobai-dev login --email <account email>"
-  echo "then, with the 6-digit code from that inbox:"
-  echo "  $BIN/mobai-dev login --email <account email> --code <code>"
-  echo "and run this script again."
+# 4. Runtime helper, the same one every platform gets, served beside this
+#    script. The agent runs it in the session; it is safe to run repeatedly.
+#    It exits 1 with the two commands when a MobAI sign-in is needed, or
+#    when mobai itself failed to come up; it exits 0 once mobai serves, phone
+#    or not, and a Tailscale login link the user may approve or skip comes
+#    with that 0.
+if ! curl -fsSL --retry 3 -o "$BIN/mobai-up" "https://mobai.run/cloud/mobai-up.sh"; then
+  echo "could not download mobai-up from mobai.run" >&2
   exit 1
 fi
-
-if ! curl -fsS -o /dev/null http://127.0.0.1:8686/api/v1/devices 2>/dev/null; then
-  GOIOS_TUNNEL_SOCKS5=socks5://127.0.0.1:1055 \
-  MOBAI_TS_SOCKET=/tmp/mobai-ts.sock \
-    "$BIN/mobai-dev" start >"$HOME/.mobai/mobai.log" 2>&1 &
-  i=0
-  while [ $i -lt 60 ]; do
-    if curl -fsS -o /dev/null http://127.0.0.1:8686/api/v1/devices 2>/dev/null; then
-      break
-    fi
-    i=$((i+1)); sleep 2
-  done
-fi
-
-if ! curl -fsS -o /dev/null http://127.0.0.1:8686/api/v1/devices 2>/dev/null; then
-  echo "mobai did not become ready; see $HOME/.mobai/mobai.log" >&2
-  exit 1
-fi
-
-# Wait for a device to actually appear, not just for the API to answer.
-#
-# Measured on a cold sandbox: the HTTP API binds ~1s after mobai starts, while
-# the go-ios tunnel to the phone opens ~65s later, reproducible within 1.5s
-# across runs. A 200 with "[]" therefore means nothing, and a 120s budget left
-# barely 55s of margin over the real discovery time. 180s is the budget; the
-# match is on an actual device id, so an error body cannot pass for a device.
-api_answered=0
-for _ in $(seq 1 90); do
-  devices=$(curl -fsS --max-time 5 http://127.0.0.1:8686/api/v1/devices 2>/dev/null || true)
-  if [ -n "$devices" ]; then api_answered=1; fi
-  case "$devices" in
-    *'"id"'*)
-      echo "mobai ready on 127.0.0.1:8686 with a connected device"
-      exit 0
-      ;;
-  esac
-  sleep 2
-done
-
-# Deliberately exit 0. The message below is addressed to the agent, so the agent
-# has to exist to read it: failing environment setup here would leave the user
-# with a dead sandbox instead of a working one that says what is missing.
-if [ "$api_answered" = "0" ]; then
-  echo "mobai never answered on 127.0.0.1:8686 - it is not running." >&2
-  echo "AGENT: this is not a device problem. Read $HOME/.mobai/mobai.log, and do" >&2
-  echo "not install the desktop app: mobai-dev is what serves this API." >&2
-  exit 0
-fi
-echo "mobai is running but NO DEVICE is connected." >&2
-echo "AGENT: do not report this as 'no devices available'. Ask the user to:" >&2
-echo "  1. reconnect the iPhone to Wi-Fi, then toggle Tailscale off and on," >&2
-echo "  2. open the MobAI app and leave it foregrounded." >&2
-echo "The phone can show Online in 'tailscale status' and answer pings while" >&2
-echo "still refusing every TCP connection, because the Tailscale network" >&2
-echo "extension replies independently of the app. Verify with a TCP connect to" >&2
-echo "port 62078 through the SOCKS5 proxy at 127.0.0.1:1055, not with ping." >&2
-echo "After the user reconnects, restart mobai-dev (kill its PID and relaunch)" >&2
-echo "because the retry backoff grows to 2+ minutes and delays pickup." >&2
-exit 0
-MOBAI_UP
 chmod +x "$BIN/mobai-up"
 
 # 5. SessionStart hook: its stdout lands in the agent's context when a session
@@ -242,7 +97,7 @@ if [ -n "$devs" ] && [ "$devs" != "[]" ]; then
 elif [ -n "$devs" ]; then
   echo "mobai is running on 127.0.0.1:8686 but no device is connected. This is not 'no devices available' - the user's iPhone is simply not reachable yet. Ask them to reconnect it to Wi-Fi, toggle Tailscale off and on, and leave the MobAI app foregrounded, then run ~/.mobai/bin/mobai-up. Meanwhile nothing blocks UI work: the preview needs no device. Run ~/.mobai/bin/mobai-dev setup --agent claude --framework <flutter|react-native|swiftui> in the project and follow the previewing-mobile-apps skill it installs."
 else
-  echo "mobai is installed here, two capabilities: (1) preview a Flutter, React Native or SwiftUI app with no device at all - run ~/.mobai/bin/mobai-dev setup --agent claude --framework <flutter|react-native|swiftui> in the project once and follow the previewing-mobile-apps skill it installs; (2) drive the user's own iPhone (screenshots, taps, app install) - run ~/.mobai/bin/mobai-up when they ask for a real-device run; it needs them to approve a Tailscale link and an emailed code. Prefer the preview for UI iteration; the phone is for verification. Details: mobai-devices skill."
+  echo "mobai is installed here, two capabilities: (1) preview a Flutter, React Native or SwiftUI app with no device at all - run ~/.mobai/bin/mobai-dev setup --agent claude --framework <flutter|react-native|swiftui> in the project once and follow the previewing-mobile-apps skill it installs; (2) drive the user's own iPhone (screenshots, taps, app install) - run ~/.mobai/bin/mobai-up when they ask for a real-device run. Both need a MobAI sign-in: MOBAI_API_KEY if the environment has it, otherwise an emailed code (free, and it creates the account when the email is new). The phone additionally needs the tailnet: MOBAI_TAILSCALE_KEY if set, otherwise a Tailscale login link the user approves; optional and only for the phone. Prefer the preview for UI iteration; the phone is for verification. Details: mobai-devices skill."
 fi
 exit 0
 MOBAI_HOOK
@@ -289,8 +144,11 @@ description: Drive the user's own iPhone from this sandbox - screenshots, taps, 
 
 # Real iPhone from this sandbox
 
-mobai serves the user's iPhone over their tailnet. Nothing device-side works
-until it is up, and bringing it up needs two short approvals from the user.
+mobai serves the user's iPhone over their tailnet. The phone needs two short
+approvals from the user: a MobAI sign-in, which every part of mobai needs and
+which also creates the account when the email is new, and a Tailscale login,
+which is optional and only for the phone. Previews, builds and simulators work
+with the sign-in alone.
 
 ## Prefer the preview for UI work
 
@@ -310,16 +168,27 @@ performance, or final verification.
 ## Bring it up
 
 Run ~/.mobai/bin/mobai-up and follow its output. It is safe to run repeatedly;
-it exits with instructions whenever a human step is needed:
+it exits 1 when a MobAI sign-in is needed or mobai failed to start, and 0 once
+mobai is serving, with or without the phone (a Tailscale link, when it prints
+one, comes with that 0):
 
-1. If it prints a Tailscale login URL: show it to the user, wait for them to
-   say they approved it, then run mobai-up again.
-2. If it says login is needed: the account email is usually in
+1. If it says MobAI sign-in is needed: the account email is usually in
    $MOBAI_ACCOUNT_EMAIL, so use that and do not ask. Only ask the user for it
-   when that variable is empty. Run the login command it prints, ask for the
-   6-digit code from their inbox, run the second command, then run mobai-up
-   again.
-3. Done when it prints: mobai ready on 127.0.0.1:8686
+   when that variable is empty, and tell them signing in also creates their
+   free account if they have none. Run the login command it prints, ask for
+   the 6-digit code from their inbox, run the second command, then run
+   mobai-up again.
+2. If it prints a Tailscale login URL: that is optional and only for the
+   physical iPhone. Say so. If the user wants the phone, show them the link,
+   wait for them to say they approved it, then run mobai-up again. If they do
+   not, carry on: previews, builds and simulators are all available.
+3. Done when it prints: mobai ready on 127.0.0.1:8686. It does not wait for
+   the phone: with the tailnet up, the iPhone appears in `mobai devices`
+   within about a minute of starting, if it is awake and reachable. "No
+   phone" means the tailnet is not up, and the output says what the user
+   would have to do: be on the same Tailscale account and network as the
+   agent, and, once per device, run the cloud setup in the MobAI desktop app
+   (https://mobai.run/download).
 
 ## Control devices
 
