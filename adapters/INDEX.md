@@ -53,7 +53,7 @@ application-proven but still need a focused regression fixture.
 | SwiftUI | Gifu | [swiftui/Gifu.swift](swiftui/Gifu.swift) | inert GIFImageView animation | no |
 | SwiftUI | KeychainSwift | [swiftui/KeychainSwift.swift](swiftui/KeychainSwift.swift) | in-memory keychain for the preview session | no |
 | SwiftUI | LinkPresentation | [swiftui/LinkPresentation.swift](swiftui/LinkPresentation.swift) | editable and empty fetched link metadata | no |
-| SwiftUI | MapKit | [swiftui/MapKit.swift](swiftui/MapKit.swift) | map placeholder reading the mocked location | yes |
+| SwiftUI | MapKit | [swiftui/MapKit.swift](swiftui/MapKit.swift) | draws a map: both Map APIs, markers as pins with titles, Annotation views, the user location from the mocked `location`; camera changes, selection and tiles compile and show nothing. Same source the engine ships as its curated stand-in (needs the engine's CoreLocation supplement for the coordinate types) | yes |
 | SwiftUI | MarkdownUI | [swiftui/MarkdownUI.swift](swiftui/MarkdownUI.swift) | paragraphs, bold headings, and bullet rows | no |
 | SwiftUI | MediaPlayer | [swiftui/MediaPlayer.swift](swiftui/MediaPlayer.swift) | in-memory Now Playing state and inert remote commands | no |
 | SwiftUI | NaturalLanguage | [swiftui/NaturalLanguage.swift](swiftui/NaturalLanguage.swift) | empty recognition results | no |
