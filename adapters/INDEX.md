@@ -1,11 +1,15 @@
 # Adapters catalogue
 
-Drop-in preview adapters for packages that cannot run inside a preview. Copy
-the file into the framework's mocks directory and the engine substitutes it for
-the real package in preview builds only. How adapters work is taught by the
-previewing-mobile-apps skill that `mobai-dev setup` installs from inside the
-binary, and the engine's `PREVIEW_UNSUPPORTED_MODULE` diagnostic names the
-exact file to write.
+Drop-in preview adapters for packages that cannot run inside a preview. The
+engine substitutes a file in the framework's mocks directory for the real
+package in preview builds only. `mobai-dev engines install` keeps a local
+copy of this catalogue (`mobai-dev adapters update` refreshes it), and when
+an import cannot resolve the engine copies the matching adapter into the
+project's mocks directory itself, with a first line naming the catalogue
+commit it came from. Without the local copy, fetch the file raw into the
+path the engine's `PREVIEW_UNSUPPORTED_MODULE` diagnostic names. How
+adapters work is taught by the previewing-mobile-apps skill that
+`mobai-dev setup` installs from inside the binary.
 
 “Tested” means the adapter has a dedicated engine test. Other entries are
 application-proven but still need a focused regression fixture.
