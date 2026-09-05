@@ -353,7 +353,7 @@ mkdir -p "$SKILL_DIR"
 cat > "$SKILL_DIR/SKILL.md" <<'MOBAI_SKILL'
 ---
 name: mobai-devices
-description: Drive the user's own iPhone from this sandbox - screenshots, taps, app install, UI tests on a real device. Use when asked to run, test, or debug an iOS app on a device.
+description: Drive the user's own iPhone from this sandbox - screenshots, taps, app install, UI tests on a real device. Use when asked to run, test, install or debug an iOS app on a device. Also load it the moment something is off - mobai devices returns an empty list, a phone does not appear, the log says connect failed or pairing rejected, a command answers AUTH_REQUIRED - before reading logs or binaries; those cases are covered here.
 ---
 
 # Real iPhone from this sandbox
@@ -430,7 +430,25 @@ that failed:
 The full action surface, predicates and failure strategies are in the
 using-mobai-cli skill installed alongside this one, including its
 references/device-automation.md. Read that before anything the example above
-does not make obvious.
+does not make obvious. What --help does not carry:
+
+- Actions: tap, double_tap, long_press, two_finger_tap, swipe, scroll, drag,
+  drag_path, pinch, type, type_secret, clear, paste_text, copy_text,
+  hide_keyboard, press_key, open_app, kill_app, open_link, navigate, wait_for,
+  delay, observe, screenshot, assert_exists (alias: assert), assert_not_exists,
+  assert_count, assert_property, assert_screen_changed, if_exists, repeat,
+  extract, run_script, eval_script, execute_js, select_web_context,
+  checkpoint, record_start, record_stop, metrics_start, metrics_stop,
+  profile_start, profile_stop, audit, set_location, reset_location, siri,
+  toggle, request_user_input, perform_actions.
+- Predicate keys are snake_case: text, text_contains, text_starts_with,
+  text_regex, value, value_contains, accessibility_id, label, label_contains,
+  type, index, enabled, visible, selected, near, parent_of, bounds_hint,
+  css_selector. The CLI's selectors are the kebab-case form
+  (`text-contains:Welcome`); inside DSL JSON that spelling is an unknown key
+  and the step is rejected. Never work around a rejected key by deleting it.
+- `amount` on scroll and swipe is a magnitude word: small, medium, large,
+  full.
 
 Do NOT try to register a mobai MCP server here; this platform does not allow
 third-party MCP. The CLI is the supported path. The raw HTTP API on
