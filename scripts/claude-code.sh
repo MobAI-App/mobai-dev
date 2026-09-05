@@ -113,9 +113,14 @@ umask 077
 alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 
 start_tailscaled() {
+  # --statedir: where tailscaled keeps the TLS certificate that
+  # `tailscale serve` (mobai-dev ota) needs; with only a --state file it
+  # fails with "no TailscaleVarRoot".
+  mkdir -p "$STATE/ts-var"
   nohup "$BIN/tailscaled" --tun=userspace-networking \
     --socks5-server=127.0.0.1:1055 \
-    --state="$STATE/ts.state" --socket=/tmp/mobai-ts.sock \
+    --state="$STATE/ts.state" --statedir="$STATE/ts-var" \
+    --socket=/tmp/mobai-ts.sock \
     </dev/null >"$STATE/tailscaled.log" 2>&1 &
   echo $! > "$STATE/tailscaled.pid"
   sleep 2
@@ -288,8 +293,9 @@ echo "If it never appears: have the user reconnect it to Wi-Fi, toggle Tailscale
 echo "off and on, and leave the MobAI app foregrounded. The phone can show Online"
 echo "in 'tailscale status' and answer pings while still refusing every TCP"
 echo "connection, because the Tailscale network extension replies independently"
-echo "of the app. After they reconnect, restart mobai-dev (kill its PID and"
-echo "relaunch): the retry backoff grows to 2+ minutes and delays pickup."
+echo "of the app. After they reconnect the phone is retried within a minute;"
+echo "$STATE/mobai.log says which peers were found, what failed and when it"
+echo "retries. To put a build on the phone without the bridge: mobai-dev ota."
 exit 0
 MOBAI_UP
 chmod +x "$BIN/mobai-up"

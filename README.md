@@ -168,6 +168,13 @@ one-time setup: connect the iPhone to the MobAI app and run its remote device
 wizard, which pairs the phone and puts it on the tailnet. Details are in the
 [cloud agents docs](https://mobai.run/docs/cloud-agents/).
 
+A signed build can also go onto the phone without the bridge: `mobai-dev ota
+App.ipa` serves it over your tailnet with a real certificate and prints the
+link to open on the phone. It checks the provisioning profile against your
+onboarded phones first, and names the one Tailscale setting that is missing
+(Serve approval, HTTPS certificates) when there is one. Install only; driving
+the app still needs the bridge.
+
 ## Signing
 
 Optional. With signing configured, a session can sign the apps it builds and
