@@ -484,6 +484,26 @@ If the workflow uploads a plain Actions artifact instead of a release asset, it
 cannot be fetched from here at all. Tell the user it needs to publish a release
 asset instead.
 
+Codemagic or Bitrise is the way around all of this. If the project is set up
+for one (builder.json has a "codemagic" or "bitrise" section, or the user says
+so), build from here directly:
+
+    mobai-dev build --ios --provider codemagic --json    # or bitrise
+
+That path needs only a git push to the repository and the provider's own API,
+nothing on api.github.com. The token comes from CODEMAGIC_API_TOKEN or
+BITRISE_API_TOKEN in this environment. Setting a project up is local too:
+mobai-dev build init --provider <name> --app-id <id> --branch <branch> --json
+writes builder.json and the provider's workflow files and lists what is left
+(commit them to that branch, create the app in the provider if not done, set
+the token, add secrets). Every missing piece comes back as one envelope naming
+it: CONFIG_INVALID means run build init, AUTH_REQUIRED means the token is not
+set, CONFIG_NOT_FOUND means the provider's workflow files were just written and
+must be committed to the named branch. Signed builds need IOS_CERTIFICATE,
+IOS_CERTIFICATE_PASSWORD and IOS_PROVISIONING_PROFILE in the provider's secret
+store; the building-ios-in-cloud skill has the full table.
+mobai-dev sim start --provider <name> puts a simulator on the same provider.
+
 ## Sign and install
 
 An unsigned .ipa will not install on a physical device.
@@ -498,8 +518,8 @@ An unsigned .ipa will not install on a physical device.
 - Never print, echo, or log the values of MOBAI_SIGN_* variables.
 - On Claude Code web there is currently no safe place for those variables, so
   signing is usually unavailable here: build unsigned, and tell the user to
-  sign and install from a machine that has the artifacts, or Builder's own
-  signing on the runner.
+  sign and install from a machine that has the artifacts, or to put the IOS_*
+  signing secrets on the CI runner so the build itself comes out signed.
 MOBAI_SKILL
 
 echo "installed: tailscale, mobai, the session hook, and the mobai-devices skill"

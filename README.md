@@ -26,18 +26,33 @@ from inside the binary, so it always matches the CLI version.
 
 ### 2. Build apps on GitHub Actions (free)
 
-A sandbox has no Xcode, so iOS builds run on a GitHub Actions macOS runner in
-your own repo, driven by the embedded
-[ios-builder](https://github.com/MobAI-App/ios-builder) engine. The first
-`mobai-dev build --ios` writes the workflow file and asks for one commit;
-after that it dispatches the build and hands the agent the artifact. Signed
-builds need one extra one-time step on your machine, `builder signing setup`,
-which puts your certificate in the repo's secrets. Android builds run right
-in the sandbox when the Android toolchain is present.
+A sandbox has no Xcode, so iOS builds run on a macOS runner in CI, driven by
+the embedded [ios-builder](https://github.com/MobAI-App/ios-builder) engine.
+GitHub Actions is the default: the first `mobai-dev build --ios` writes the
+workflow file and asks for one commit; after that it dispatches the build and
+hands the agent the artifact. Signed builds need one extra one-time step on
+your machine: your certificate and provisioning profile go into the repo's
+secrets, and the desktop app's remote device wizard shows exactly how. Android
+builds run right in the sandbox when the Android toolchain is present.
+
+Codemagic and Bitrise work too, with `--provider codemagic` or
+`--provider bitrise` (or `"provider"` in `builder.json`). They build the
+same pushed snapshot from your GitHub repository. One-time setup: create the
+app in the provider and connect it to the repository, run `mobai-dev build
+init --provider <provider> --app-id <id> --branch <branch>` (local, no
+network, fine from the sandbox), commit the `codemagic.yaml` or `bitrise.yml`
+plus `.builder/ci/runner.sh` it writes to that branch, and give the sandbox
+the token as `CODEMAGIC_API_TOKEN` or `BITRISE_API_TOKEN`. Signed
+builds need `IOS_CERTIFICATE`, `IOS_CERTIFICATE_PASSWORD` and
+`IOS_PROVISIONING_PROFILE` in the provider's secret store (Codemagic: the
+`builder` environment group; Bitrise: the project's Secrets). Guides:
+[provider setup](https://github.com/MobAI-App/ios-builder/blob/main/docs/provider-setup.md),
+[signing and MobAI secrets](https://github.com/MobAI-App/ios-builder/blob/main/docs/provider-secrets.md).
 
 ### 3. Give the agent a simulator (Pro)
 
-`mobai-dev sim start` builds the project and attaches an iOS simulator
+`mobai-dev sim start` (add `--provider codemagic` or `bitrise` to run it there;
+the run publishes with `MOBAI_API_KEY` from that provider's secrets) builds the project and attaches an iOS simulator
 running it to your account, on a GitHub Actions macOS runner. The agent
 drives it like any MobAI device, and you can watch and take over from the
 MobAI app.
