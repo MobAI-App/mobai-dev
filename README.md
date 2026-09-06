@@ -5,8 +5,10 @@ Everything a coding agent needs to build iOS apps from a Linux sandbox.
 simulators, and drives a real phone, from the environments where cloud
 agents live.
 
-It talks to your MobAI account with an API key, and the key comes from the
-[MobAI](https://mobai.run) desktop app, so install the app first.
+It talks to your MobAI account: an API key from the [MobAI](https://mobai.run)
+desktop app, or a sign-in from the session with an emailed code, which creates
+the account when the email is new. The desktop app is needed only for your
+own phone.
 
 ![A Flutter screen rendered by the preview beside the semantic tree the agent reads](docs/preview.png)
 
@@ -67,13 +69,19 @@ sustained use needs Pro.
 
 ## Set up your sandbox
 
+One setup command for every platform. The script installs the tools and the
+agent skills, and reads nothing it does not have to: with `MOBAI_API_KEY`,
+`MOBAI_ACCOUNT_EMAIL` or `MOBAI_TAILSCALE_KEY` in the environment the agent
+uses them, and for whatever is missing it asks you in the session (an emailed
+sign-in code, a Tailscale login link).
+
 <details>
 <summary><b>Claude Code</b></summary>
 
 In the repo settings, set the environment setup command to:
 
 ```bash
-curl -fsSL https://mobai.run/cloud/claude-code.sh | sh
+curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
 Claude Code's environment variables are visible to everyone in the environment
@@ -113,7 +121,7 @@ pdomnyovfhqsjhgtixub.supabase.co
 In `.cursor/environment.json`, set the install command to:
 
 ```bash
-curl -fsSL https://mobai.run/cloud/cursor.sh | sh
+curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
 Put these in the environment's secrets:
@@ -137,7 +145,7 @@ more.
 In the environment settings, set the setup script to:
 
 ```bash
-curl -fsSL https://mobai.run/cloud/codex.sh | sh
+curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
 and put `MOBAI_API_KEY=<your mobai API key>` in the environment's secrets, or
@@ -160,11 +168,11 @@ Code or Cursor when the phone is the point.
 <details>
 <summary><b>Grok bot</b></summary>
 
-Grok has no setup command field. Paste the Cursor install command into the
+Grok has no setup command field. Paste the same setup command into the
 chat and the bot runs it in its sandbox:
 
 ```bash
-curl -fsSL https://mobai.run/cloud/cursor.sh | sh
+curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
 No environment variables needed. The agent signs in from the chat with an

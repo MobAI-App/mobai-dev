@@ -1,21 +1,34 @@
 #!/bin/sh
-# MobAI cloud-agent setup for Claude Code sandboxes.
+# MobAI cloud-agent setup: one script for every agent sandbox (Claude Code,
+# Cursor, Codex, Grok Bot).
 #
-# Served from https://mobai.run/cloud/claude-code.sh so it can be fixed without
+# Served from https://mobai.run/cloud/install.sh so it can be fixed without
 # anyone re-pasting it into their environment settings. What users paste is the
-# one-liner that fetches this file.
+# one-liner that fetches this file. The older per-platform URLs
+# (claude-code.sh, cursor.sh, codex.sh) serve a copy of this same file.
+#
+# Nothing here is required up front, and nothing here reads a secret. The
+# agent checks the environment first and falls back to asking, in the
+# session, for what is missing:
+#   MOBAI_API_KEY        the account key; without it the agent signs in from
+#                        the session with an emailed code, which also creates
+#                        the account when the email is new
+#   MOBAI_ACCOUNT_EMAIL  optional: the email to sign in with, so the agent does
+#                        not have to ask for it
+#   MOBAI_TAILSCALE_KEY  an ephemeral Tailscale auth key, only for the phone;
+#                        without it the tailnet is joined by a login link the
+#                        user approves, or not at all
+# Devices are discovered: mobai asks the API which devices this account
+# onboarded, then exposes the ones currently reachable on the tailnet.
 #
 # The version is pinned rather than resolved from "latest": resolving is a
 # server-side redirect some sandboxes refuse (Codex returns 403 for it), while a
 # plain asset download works everywhere. Bump this on every release.
 MOBAI_VERSION=1.0.0
 
-# mobai for Claude Code web: installs tools only, no credentials involved.
-# Connecting happens later, inside the chat, where you approve a Tailscale
-# login link and an emailed code. Nothing here reads any secret.
 set -eu
 
-echo "mobai setup: Claude Code (installs tools only, you connect in the chat)"
+echo "mobai setup: installs mobai-dev, the mobai CLI, tailscale and the agent skills"
 
 BIN="$HOME/.mobai/bin"
 mkdir -p "$BIN"
@@ -70,28 +83,32 @@ chmod +x "$BIN/mobai"
 
 # The skill also brings the DSL and .mob references to disk, which is how an
 # agent reads the full action surface where no MCP resources are served.
-mkdir -p "$HOME/.claude/skills"
-"$BIN/mobai" skills install "$HOME/.claude/skills" >/dev/null 2>&1 \
-  || echo "note: could not install the mobai CLI skill" >&2
+# Every skills location the supported agents read, because this script does
+# not know which one is running it: Claude Code reads ~/.claude/skills, Cursor
+# and Grok Bot ~/.cursor/skills, Codex ~/.agents/skills.
+SKILL_ROOTS="$HOME/.claude/skills $HOME/.cursor/skills $HOME/.agents/skills"
+for d in $SKILL_ROOTS; do
+  mkdir -p "$d"
+  "$BIN/mobai" skills install "$d" >/dev/null 2>&1 \
+    || echo "note: could not install the mobai CLI skill into $d" >&2
+done
 
-# 4. Runtime helper, the same one every platform gets, written here from
-#    the same block in every setup script. The agent runs it in the session;
-#    it is safe to run repeatedly.
+# 4. Runtime helper. The agent runs it in the session; it is safe to run
+#    repeatedly.
 #    It exits 1 with the two commands when a MobAI sign-in is needed, or
 #    when mobai itself failed to come up; it exits 0 once mobai serves, phone
 #    or not, and a Tailscale login link the user may approve or skip comes
 #    with that 0.
-# The block below is byte-identical in claude-code.sh, cursor.sh and
-# codex.sh; change it in all three or in none.
 cat > "$BIN/mobai-up" <<'MOBAI_UP'
 #!/bin/sh
-# mobai-up: bring mobai up for this agent session. Written by every
-# platform's setup script as ~/.mobai/bin/mobai-up, from a block that is
-# byte-identical across them, so all of them run the same logic:
+# mobai-up: bring mobai up for this agent session. Written by the setup
+# script as ~/.mobai/bin/mobai-up. Environment first, then the stored state,
+# then a human step, for each of:
 #
 #   1. MobAI account: MOBAI_API_KEY from the environment if set, otherwise the
 #      stored login; with neither, the agent signs in (an emailed 6-digit
-#      code), which also creates the account when the email is new.
+#      code), which also creates the account when the email is new. The
+#      email comes from MOBAI_ACCOUNT_EMAIL when set, else from the user.
 #   2. Tailnet, only for the user's physical iPhone and never fatal:
 #      MOBAI_TAILSCALE_KEY if set, otherwise a login link the user approves.
 #      Some sandboxes (Codex, as of this writing) block the connection a join
@@ -130,11 +147,21 @@ start_tailscaled() {
 #    need, and signing in also creates the account when the email is new.
 if [ -z "${MOBAI_API_KEY:-}" ] && ! "$BIN/mobai-dev" login >/dev/null 2>&1; then
   echo "MobAI sign-in needed. It is free and also creates the account if the"
-  echo "email is new. Ask the user for their email, then run:"
-  echo "  $BIN/mobai-dev login --email <email>"
-  echo "then, with the 6-digit code from that inbox:"
-  echo "  $BIN/mobai-dev login --email <email> --code <code>"
-  echo "and run this script again."
+  echo "email is new. No MOBAI_API_KEY is set, so sign in with an emailed code."
+  if [ -n "${MOBAI_ACCOUNT_EMAIL:-}" ]; then
+    echo "The email is in MOBAI_ACCOUNT_EMAIL, so do not ask for it. Run:"
+    echo "  $BIN/mobai-dev login --email $MOBAI_ACCOUNT_EMAIL"
+    echo "then ask the user for the 6-digit code from that inbox and run:"
+    echo "  $BIN/mobai-dev login --email $MOBAI_ACCOUNT_EMAIL --code <code>"
+  else
+    echo "Ask the user for their email (MOBAI_ACCOUNT_EMAIL in the environment"
+    echo "would have carried it), then run:"
+    echo "  $BIN/mobai-dev login --email <email>"
+    echo "then, with the 6-digit code from that inbox:"
+    echo "  $BIN/mobai-dev login --email <email> --code <code>"
+  fi
+  echo "and run this script again. AGENT: this is the whole fix; the binary"
+  echo "is fine, do not debug or reinstall it."
   exit 1
 fi
 
@@ -300,9 +327,10 @@ exit 0
 MOBAI_UP
 chmod +x "$BIN/mobai-up"
 
-# 5. SessionStart hook: its stdout lands in the agent's context when a session
-#    starts, so the agent knows mobai is here without the user pasting anything.
-#    Kept fast and read-only; the actual bring-up stays in mobai-up.
+# 5. Session hook: its stdout lands in the agent's context when a Claude Code
+#    session starts. Only Claude Code reads ~/.claude/settings.json; on the
+#    other platforms the file is inert, and the skills below carry the same
+#    guidance. Kept fast and read-only; the bring-up stays in mobai-up.
 cat > "$BIN/mobai-hook" <<'MOBAI_HOOK'
 #!/bin/sh
 devs=$(curl -fsS http://127.0.0.1:8686/api/v1/devices 2>/dev/null || echo "")
@@ -346,11 +374,10 @@ else
   echo "note: $SETTINGS exists and python3 is missing; add a SessionStart hook for $BIN/mobai-hook yourself" >&2
 fi
 
-# 6. Skill: how to bring mobai up and use it, so the agent does not have to be
-#    told in every conversation.
-SKILL_DIR="$HOME/.claude/skills/mobai-devices"
-mkdir -p "$SKILL_DIR"
-cat > "$SKILL_DIR/SKILL.md" <<'MOBAI_SKILL'
+# 6. The mobai-devices skill: sign-in, tailnet, phone, builds, in the order
+#    an agent meets them. Written into every skills root, like the CLI skill.
+write_skill() {
+cat > "$1" <<'MOBAI_SKILL'
 ---
 name: mobai-devices
 description: Drive the user's own iPhone from this sandbox - screenshots, taps, app install, UI tests on a real device. Use when asked to run, test, install or debug an iOS app on a device. Also load it the moment something is off - mobai devices returns an empty list, a phone does not appear, the log says connect failed or pairing rejected, a command answers AUTH_REQUIRED - before reading logs or binaries; those cases are covered here.
@@ -372,10 +399,9 @@ with no device, no approvals and no waiting: semantic tree, taps, typing,
 screenshots, hot reload, mocked location/permissions/network. Set it up once
 per project:
 
-    ~/.mobai/bin/mobai-dev setup --agent claude --framework <flutter|react-native|swiftui>
+    ~/.mobai/bin/mobai-dev setup --agent <claude|codex|cursor> --framework <flutter|react-native|swiftui>
 
 and follow the previewing-mobile-apps skill it installs into the project.
-Engine downloads work from this sandbox (release asset downloads are allowed).
 Reach for the real iPhone below when the question is native behaviour,
 performance, or final verification.
 
@@ -386,12 +412,14 @@ it exits 1 when a MobAI sign-in is needed or mobai failed to start, and 0 once
 mobai is serving, with or without the phone (a Tailscale link, when it prints
 one, comes with that 0):
 
-1. If it says MobAI sign-in is needed: the account email is usually in
-   $MOBAI_ACCOUNT_EMAIL, so use that and do not ask. Only ask the user for it
-   when that variable is empty, and tell them signing in also creates their
-   free account if they have none. Run the login command it prints, ask for
-   the 6-digit code from their inbox, run the second command, then run
-   mobai-up again.
+1. If it says MobAI sign-in is needed: that means MOBAI_API_KEY is not in
+   the environment, which is normal, not a broken install. The account
+   email is usually in $MOBAI_ACCOUNT_EMAIL, so use that and do not ask.
+   Only ask the user for it when that variable is empty, and tell them
+   signing in also creates their free account if they have none. Run the
+   login command it prints, ask for the 6-digit code from their inbox, run
+   the second command, then run mobai-up again. Never try to fix, rebuild
+   or re-download the binary for this.
 2. If it prints a Tailscale login URL: that is optional and only for the
    physical iPhone. Say so. If the user wants the phone, show them the link,
    wait for them to say they approved it, then run mobai-up again. If they do
@@ -450,9 +478,11 @@ does not make obvious. What --help does not carry:
 - `amount` on scroll and swipe is a magnitude word: small, medium, large,
   full.
 
-Do NOT try to register a mobai MCP server here; this platform does not allow
-third-party MCP. The CLI is the supported path. The raw HTTP API on
-http://127.0.0.1:8686/api/v1 is a fallback if the CLI is unavailable.
+On Claude Code web, do NOT try to register a mobai MCP server; that platform
+does not allow third-party MCP, and the CLI is the supported path. On Cursor
+and Codex, mobai-dev registers its MCP server itself when it starts; the CLI
+works there too. The raw HTTP API on http://127.0.0.1:8686/api/v1 is a
+fallback if the CLI is unavailable.
 
 A device can be legitimately absent: if the phone is asleep or off the
 tailnet, the list is empty. Tell the user to wake the phone rather than
@@ -461,13 +491,16 @@ treating it as an error.
 ## Build the app
 
 This sandbox has no Xcode, so an .ipa has to be built by CI on a macOS runner.
+The building-ios-in-cloud skill is the full guide; the short form:
 
-The GitHub API is blocked here, so do NOT try to trigger a build or fetch
-artifacts through it, and do not try to install a CLI that does. Both fail with
-403 no matter how they authenticate. Only two things reach GitHub from this
-sandbox: git through the configured remote, and release asset downloads.
+    mobai-dev build init --json            # once per project, GitHub Actions
+    mobai-dev build --ios --json           # builds a snapshot of the tree
 
-So the build loop is:
+On Claude Code web the GitHub API is blocked: do NOT try to trigger a build or
+fetch artifacts through it there, and do not install a CLI that does; both
+fail with 403 no matter how they authenticate. Only git through the configured
+remote and release asset downloads reach GitHub from that sandbox, so the
+loop there is:
 
 1. Check the repo for an iOS build workflow under .github/workflows. If there is
    none, stop: it is a one-time setup the user does on their own machine, and
@@ -521,6 +554,43 @@ An unsigned .ipa will not install on a physical device.
   sign and install from a machine that has the artifacts, or to put the IOS_*
   signing secrets on the CI runner so the build itself comes out signed.
 MOBAI_SKILL
+}
+for d in $SKILL_ROOTS; do
+  mkdir -p "$d/mobai-devices"
+  write_skill "$d/mobai-devices/SKILL.md"
+done
 
-echo "installed: tailscale, mobai, the session hook, and the mobai-devices skill"
-echo "in a session, just ask the agent to run something on your device"
+# 7. The account, reported and not required. Environment first: with
+#    MOBAI_API_KEY set there is nothing to do. Otherwise the agent signs in
+#    from the session, which also creates the account when the email is new.
+#    Not a failure either way; nothing is started here, because a process
+#    started during setup does not survive into the session on every platform.
+if [ -z "${MOBAI_API_KEY:-}" ] && ! "$BIN/mobai-dev" login >/dev/null 2>&1; then
+  echo "" >&2
+  echo "note: no MobAI account on this machine yet. Either add MOBAI_API_KEY to" >&2
+  echo "the environment's secrets, or the agent signs in from the session (free," >&2
+  echo "and it creates the account when the email is new):" >&2
+  echo "  $BIN/mobai-dev login --email <the user's email>" >&2
+  echo "  $BIN/mobai-dev login --email <the user's email> --code <the 6 digits emailed>" >&2
+  echo "MOBAI_ACCOUNT_EMAIL in the environment saves the agent asking for the email." >&2
+fi
+
+cat <<'DONE'
+
+installed: mobai-dev, the mobai CLI, tailscale, ~/.mobai/bin/mobai-up, and the
+mobai-devices and using-mobai-cli skills
+
+What the agent should know (the mobai-devices skill says the same):
+- previews of Flutter, React Native and SwiftUI apps need no device: run
+  ~/.mobai/bin/mobai-dev setup --agent <claude|codex|cursor> --framework <flutter|react-native|swiftui>
+  in the project, then follow the previewing-mobile-apps skill it installs.
+- everything needs a MobAI sign-in: MOBAI_API_KEY if the environment has it,
+  otherwise ~/.mobai/bin/mobai-dev login --email <email> and then --code
+  <emailed code>. Free, and it creates the account when the email is new.
+  MOBAI_ACCOUNT_EMAIL, when set, is the email to use.
+- the user's physical iPhone additionally needs the tailnet: MOBAI_TAILSCALE_KEY
+  if set, otherwise a Tailscale login link the user approves; plus, once per
+  device, the cloud setup in the MobAI desktop app (https://mobai.run/download).
+- run ~/.mobai/bin/mobai-up in the session before any device work; it checks
+  the environment first and says which human step, if any, it is waiting on.
+DONE
