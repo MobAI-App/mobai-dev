@@ -160,7 +160,15 @@ Code or Cursor when the phone is the point.
 <details>
 <summary><b>Grok bot</b></summary>
 
-Coming soon. We have not verified Grok's sandbox yet.
+Grok has no setup command field. Paste the Cursor install command into the
+chat and the bot runs it in its sandbox:
+
+```bash
+curl -fsSL https://mobai.run/cloud/cursor.sh | sh
+```
+
+No environment variables needed. The agent signs in from the chat with an
+emailed code.
 
 </details>
 
