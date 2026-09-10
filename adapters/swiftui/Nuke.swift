@@ -39,14 +39,23 @@ public final class ImageContainer: @unchecked Sendable {
 }
 
 public final class LazyImageState: @unchecked Sendable {
-    public init() {}
+    private let loading: Bool
+    public init() { loading = false }
+    /// `loading` is true while a URL is set: the paint host is fetching
+    /// those pixels, which is what a device's state says at that moment.
+    /// An app whose closure draws its placeholder only under `isLoading`
+    /// (a media carousel: `if let image {} else if state.isLoading
+    /// { RoundedRectangle }`) drew nothing at all with `false`, and with
+    /// nothing drawn the image marker had no size and the host never
+    /// painted the photo either.
+    public init(loading: Bool) { self.loading = loading }
     public var image: Image? { nil }
     // A CONTAINER with no image, not nil: apps branch on the container
     // first (`if let container = state.imageContainer`), and nil renders
     // NOTHING. The empty container walks the application into its
     // own placeholder branch, which draws the bordered box it designed.
     public var imageContainer: ImageContainer? { ImageContainer() }
-    public var isLoading: Bool { false }
+    public var isLoading: Bool { loading }
     public var error: Error? { nil }
 }
 

@@ -44,7 +44,7 @@ application-proven but still need a focused regression fixture.
 | Flutter | youtube_player_iframe | [flutter/youtube_player_iframe.dart](flutter/youtube_player_iframe.dart) | controller API with a placeholder player | no |
 | SwiftUI | AVFoundation | [swiftui/AVFoundation.swift](swiftui/AVFoundation.swift) | inert players and export sessions | no |
 | SwiftUI | AVKit | [swiftui/AVKit.swift](swiftui/AVKit.swift) | VideoPlayer and CMTime surface | no |
-| SwiftUI | AudioToolbox | [swiftui/AudioToolbox.swift](swiftui/AudioToolbox.swift) | silent system sounds | no |
+| SwiftUI | AudioToolbox | [swiftui/AudioToolbox.swift](swiftui/AudioToolbox.swift) | silent system sounds; takes a URL on Linux, where the engine drops the app's `as CFURL` | no |
 | SwiftUI | AuthenticationServices | [swiftui/AuthenticationServices.swift](swiftui/AuthenticationServices.swift) | web-authentication environment session with typed failure | no |
 | SwiftUI | BackgroundTasks | [swiftui/BackgroundTasks.swift](swiftui/BackgroundTasks.swift) | inert registration, requests, completion, and cancellation | no |
 | SwiftUI | Bodega | [swiftui/Bodega.swift](swiftui/Bodega.swift) | empty storage reads and non-persistent writes | no |
@@ -66,9 +66,10 @@ application-proven but still need a focused regression fixture.
 | SwiftUI | Photos | [swiftui/Photos.swift](swiftui/Photos.swift) | denied authorization and empty fetches | no |
 | SwiftUI | PhotosUI | [swiftui/PhotosUI.swift](swiftui/PhotosUI.swift) | PhotosPicker that loads nothing | no |
 | SwiftUI | RevenueCat | [swiftui/RevenueCat.swift](swiftui/RevenueCat.swift) | empty products and entitlements, cancelled purchases | no |
-| SwiftUI | SFSafeSymbols | [swiftui/SFSafeSymbols.swift](swiftui/SFSafeSymbols.swift) | RawRepresentable symbols and deterministic picker inventory | no |
+| SwiftUI | SafariServices | [swiftui/SafariServices.swift](swiftui/SafariServices.swift) | SFSafariViewController with Configuration and dismiss style as a plain view controller that presents nothing; delegate protocol with default methods; SFAuthenticationSession that never starts | no |
+| SwiftUI | SFSafeSymbols | [swiftui/SFSafeSymbols.swift](swiftui/SFSafeSymbols.swift) | RawRepresentable symbols with `Image`/`Label`/`UIImage` `systemSymbol:` initializers; the engine appends each `.symbolName` static the app uses and the camel-case spelling maps to the real symbol name; deterministic picker inventory | no |
 | SwiftUI | Sentry | [swiftui/Sentry.swift](swiftui/Sentry.swift) | no-op crash reporting and tracing | no |
-| SwiftUI | SwiftSoup | [swiftui/SwiftSoup.swift](swiftui/SwiftSoup.swift) | empty DOM walk and plain-text clean | no |
+| SwiftUI | SwiftSoup | [swiftui/SwiftSoup.swift](swiftui/SwiftSoup.swift) | real parse of tags, attributes, text, entities and void elements; simple selectors (`tag`, `.class`, `#id`, `[attr]`, `:not(.class)`); remove/after; clean to text | no |
 | SwiftUI | SwipeActions | [swiftui/SwipeActions.swift](swiftui/SwipeActions.swift) | closed-state swipe containers and action labels | no |
 | SwiftUI | SwiftyCrop | [swiftui/SwiftyCrop.swift](swiftui/SwiftyCrop.swift) | uncropped image placeholder and configuration | no |
 | SwiftUI | TelemetryDeck | [swiftui/TelemetryDeck.swift](swiftui/TelemetryDeck.swift) | typed configuration and no-op signals | no |

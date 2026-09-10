@@ -37,7 +37,10 @@ public struct LazyImage<Content: View>: View {
     // the URL so a paint host with a real image stack fetches and draws the
     // pixels over it, which is the sequence a device shows.
     public var body: some View {
-        content(LazyImageState()).overlay(PreviewRemoteImage(url: url))
+        // Loading while a URL is set: the host is fetching it. The app's
+        // loading branch then draws its placeholder at full size, which is
+        // the rect the marker registers for the pixels.
+        content(LazyImageState(loading: url != nil)).overlay(PreviewRemoteImage(url: url))
     }
 
     /// Accepted and dropped: processing applies to pixels, and there are none.
