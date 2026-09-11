@@ -24,7 +24,7 @@
 # The version is pinned rather than resolved from "latest": resolving is a
 # server-side redirect some sandboxes refuse (Codex returns 403 for it), while a
 # plain asset download works everywhere. Bump this on every release.
-MOBAI_VERSION=1.0.0
+MOBAI_VERSION=1.1.0
 
 set -eu
 
