@@ -407,6 +407,56 @@ else
   echo "note: $SETTINGS exists and python3 is missing; add a SessionStart hook for $BIN/mobai-hook yourself" >&2
 fi
 
+# 5b. Turn-zero pointers for the agents that have no session hook. This
+#     script runs in the environment's setup step, before the agent exists,
+#     and installs into the home directory; an agent's first look is at the
+#     repository, where nothing says mobai is here. Left like that, an agent
+#     seeing an iOS app on Linux decides Xcode is out of reach and installs a
+#     Swift toolchain on its own. So the fact goes where each agent reads on
+#     its first turn: Codex reads ~/.codex/AGENTS.md everywhere, Cursor reads
+#     the workspace's .cursor/rules (kept out of git through .git/info/exclude,
+#     so it never lands in a commit). Claude Code has the session hook above.
+write_pointer() {
+  cat <<MOBAI_POINTER
+## MobAI is installed in this sandbox
+
+mobai-dev (~/.mobai/bin/mobai-dev) previews Flutter, React Native and SwiftUI
+apps in a phone-sized viewport with no device and no Xcode, builds iOS apps on
+a macOS runner and runs them on an on-demand simulator, and can drive the
+user's own iPhone. Before installing any Swift or Xcode toolchain to run a
+mobile app, do this in the project:
+
+    ~/.mobai/bin/mobai-dev setup --agent $1 --framework <flutter|react-native|swiftui> --json
+
+and follow the previewing-mobile-apps skill it installs. To build and run the
+real app: the building-ios-in-cloud skill (mobai-dev build --ios). For the
+user's phone: ~/.mobai/bin/mobai-up (mobai-devices skill). Everything needs a
+MobAI sign-in: MOBAI_API_KEY if the environment has it, otherwise
+~/.mobai/bin/mobai-dev login --email <email>, then --code <the emailed code>.
+MOBAI_POINTER
+}
+
+CODEX_AGENTS="$HOME/.codex/AGENTS.md"
+mkdir -p "$HOME/.codex"
+if ! grep -qs 'MobAI is installed in this sandbox' "$CODEX_AGENTS"; then
+  { [ -s "$CODEX_AGENTS" ] && printf '\n'; write_pointer codex; } >> "$CODEX_AGENTS"
+fi
+
+if REPO="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  RULE="$REPO/.cursor/rules/mobai.mdc"
+  if [ ! -f "$RULE" ]; then
+    mkdir -p "$REPO/.cursor/rules"
+    {
+      printf -- '---\ndescription: MobAI preview, build and device tooling installed in this sandbox\nalwaysApply: true\n---\n\n'
+      write_pointer cursor
+    } > "$RULE"
+    EXCLUDE="$REPO/.git/info/exclude"
+    if [ -d "$REPO/.git/info" ] && ! grep -qs '^\.cursor/rules/mobai\.mdc$' "$EXCLUDE"; then
+      printf '.cursor/rules/mobai.mdc\n' >> "$EXCLUDE"
+    fi
+  fi
+fi
+
 # 6. The mobai-devices skill: sign-in, tailnet, phone, builds, in the order
 #    an agent meets them. Written into every skills root, like the CLI skill.
 write_skill() {
