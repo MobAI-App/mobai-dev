@@ -1,9 +1,9 @@
 {
   "version": "1.1.0",
-  "commit": "179b1b2",
-  "publishedAt": "2026-09-11T20:02:09Z",
+  "commit": "65392d5",
+  "publishedAt": "2026-09-11T21:42:47Z",
   "assets": {
-    "mobai-dev_linux_amd64": "370ca95fbe0cae0cca6c160f3f59696da9ec47410743f0be1d17a2734cae7fb3",
-    "mobai-dev_linux_arm64": "3fffd01b1c8b1a1cd93636c0d085d8fb2fb44e70c14423dd3ba501dccecaffa6"
+    "mobai-dev_linux_amd64": "1bb418175f7e96889215a557b93e65896bd7f972f0f29a2239d6f3f70b174c58",
+    "mobai-dev_linux_arm64": "77dc4f73bec4e3045ac2fb0d30b76af136666392353a2117e00433e92cb97e67"
   }
 }
