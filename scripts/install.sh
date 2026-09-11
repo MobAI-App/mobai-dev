@@ -63,12 +63,45 @@ if [ ! -x "$BIN/tailscaled" ]; then
   rm -f "$TS_TGZ"
 fi
 
-# 2. Headless mobai.
+# 2. Headless mobai: the published build, refreshed when the one here differs.
+#    The manifest beside this script names the build that is out (version,
+#    commit, checksum per asset), so a sandbox image that baked an older
+#    binary, or a release refreshed under the same version, gets the current
+#    one; a binary that already matches is left alone. Without the manifest
+#    (no network to mobai.run) the pinned version above is installed when
+#    nothing is installed, as before.
+MANIFEST_URL="${MOBAI_MANIFEST_URL:-https://mobai.run/cloud/mobai-dev.json}"
+RELEASE_BASE="${MOBAI_RELEASE_BASE:-https://github.com/MobAI-App/mobai-dev/releases/download}"
+WANT_VERSION="$MOBAI_VERSION"
+WANT_SHA=""
+if MANIFEST="$(curl -fsSL --max-time 10 "$MANIFEST_URL" 2>/dev/null)"; then
+  v="$(printf '%s' "$MANIFEST" | tr -d '\n' | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')"
+  [ -n "$v" ] && WANT_VERSION="$v"
+  WANT_SHA="$(printf '%s' "$MANIFEST" | tr -d '\n' | sed -n "s/.*\"mobai-dev_linux_${ARCH}\" *: *\"\([0-9a-fA-F]*\)\".*/\1/p")"
+fi
+file_sha() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
+NEED_DOWNLOAD=0
 if [ ! -x "$BIN/mobai-dev" ]; then
-  echo "downloading mobai"
-  curl -fsSL -o "$BIN/mobai-dev" \
-    "https://github.com/MobAI-App/mobai-dev/releases/download/v$MOBAI_VERSION/mobai-dev_linux_${ARCH}"
-  chmod +x "$BIN/mobai-dev"
+  NEED_DOWNLOAD=1
+elif [ -n "$WANT_SHA" ] && [ "$(file_sha "$BIN/mobai-dev")" != "$WANT_SHA" ]; then
+  NEED_DOWNLOAD=1
+fi
+if [ "$NEED_DOWNLOAD" = 1 ]; then
+  echo "downloading mobai-dev $WANT_VERSION"
+  curl -fsSL -o "$BIN/mobai-dev.new" \
+    "$RELEASE_BASE/v$WANT_VERSION/mobai-dev_linux_${ARCH}"
+  if [ -n "$WANT_SHA" ] && [ "$(file_sha "$BIN/mobai-dev.new")" != "$WANT_SHA" ]; then
+    rm -f "$BIN/mobai-dev.new"
+    if [ -x "$BIN/mobai-dev" ]; then
+      echo "the downloaded mobai-dev did not match its published checksum; keeping the installed one" >&2
+    else
+      echo "the downloaded mobai-dev did not match its published checksum" >&2
+      exit 1
+    fi
+  else
+    chmod +x "$BIN/mobai-dev.new"
+    mv -f "$BIN/mobai-dev.new" "$BIN/mobai-dev"
+  fi
 fi
 
 # 3. The mobai CLI plus its skill and references. The CLI is inside the binary
