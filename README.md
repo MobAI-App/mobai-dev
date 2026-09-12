@@ -5,11 +5,6 @@ Everything a coding agent needs to build iOS apps from a Linux sandbox.
 simulators, and drives a real phone, from the environments where cloud
 agents live.
 
-It talks to your MobAI account: an API key from the [MobAI](https://mobai.run)
-desktop app, or a sign-in from the session with an emailed code, which creates
-the account when the email is new. The desktop app is needed only for your
-own phone.
-
 ![A Flutter screen rendered by the preview beside the semantic tree the agent reads](docs/preview.png)
 
 ## What an agent can do
@@ -74,6 +69,11 @@ agent skills, and reads nothing it does not have to: with `MOBAI_API_KEY`,
 `MOBAI_ACCOUNT_EMAIL` or `MOBAI_TAILSCALE_KEY` in the environment the agent
 uses them, and for whatever is missing it asks you in the session (an emailed
 sign-in code, a Tailscale login link).
+
+It talks to your MobAI account: an API key from the [MobAI](https://mobai.run)
+desktop app, or a sign-in from the session with an emailed code, which creates
+the account when the email is new. The desktop app is needed only for your
+own phone.
 
 <details>
 <summary><b>Claude Code</b></summary>
