@@ -46,7 +46,7 @@ builds need `IOS_CERTIFICATE`, `IOS_CERTIFICATE_PASSWORD` and
 [provider setup](https://github.com/MobAI-App/ios-builder/blob/main/docs/provider-setup.md),
 [signing and MobAI secrets](https://github.com/MobAI-App/ios-builder/blob/main/docs/provider-secrets.md).
 
-### 3. Give the agent a simulator (Pro)
+### 3. Give the agent a simulator (free)
 
 `mobai-dev sim start` (add `--provider codemagic` or `bitrise` to run it there;
 the run publishes with `MOBAI_API_KEY` from that provider's secrets) builds the project and attaches an iOS simulator
