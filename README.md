@@ -214,6 +214,14 @@ steps: a wildcard provisioning profile and an exported certificate,
 base64-encoded into two environment secrets. A phone set up with a free Apple
 ID needs reconnecting weekly; a paid Apple Developer account lasts a year.
 
+Without any of that, the agent can sign a build with your Apple ID from the
+sandbox: `mobai-dev sign` runs in the background, asks you through the agent
+for the two-factor code when Apple wants one, and hands back an IPA for your
+phone. A free Apple ID works; its profile lasts seven days and covers three
+apps. The credentials are two sandbox secrets, `APPLE_ID` and
+`APPLE_ID_PASSWORD`; the agent asks you to set them, never for the password
+itself.
+
 ## Publishing
 
 Shipping to TestFlight and the App Store from the sandbox: coming soon.
