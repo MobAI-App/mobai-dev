@@ -1,0 +1,109 @@
+name: image
+
+# Builds the mobai-dev environment image (docker/Dockerfile) and publishes it
+# to ghcr.io/mobai-app/mobai-dev, tagged with the mobai-dev version from
+# scripts/mobai-dev.json and as latest. Runs on demand, and whenever the
+# Dockerfile or the manifest changes on main. linux/amd64 only: that is what
+# the agent platforms run, and what the engines' Linux binaries and the
+# embedded signer are built for.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: mobai-dev version to build (default from scripts/mobai-dev.json)
+        required: false
+        type: string
+      push:
+        description: push to GHCR (off builds and tests only)
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - docker/**
+      - scripts/mobai-dev.json
+      - .github/workflows/image.yml
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: version
+        run: |
+          v="${{ inputs.version }}"
+          [ -n "$v" ] || v="$(jq -r .version scripts/mobai-dev.json)"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      # The image is about 8 GB and the runner starts with 14 GB free, most of
+      # it under toolchains this build never touches.
+      - name: Make room
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af
+          df -h / | tail -1
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ inputs.push != false }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          build-args: |
+            MOBAI_VERSION=${{ steps.version.outputs.version }}
+          tags: |
+            ghcr.io/mobai-app/mobai-dev:${{ steps.version.outputs.version }}
+            ghcr.io/mobai-app/mobai-dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The image is what a sandbox boots into: every toolchain answers as the
+      # agent user, the engines are installed, and setup's rows are present
+      # except the two that are the user's (account, Apple fonts). Launching
+      # an engine needs an account grant, so that part is verified by hand
+      # against a build before a release, not here.
+      - name: Smoke test
+        run: |
+          img=ghcr.io/mobai-app/mobai-dev:${{ steps.version.outputs.version }}
+          docker run --rm "$img" bash -lc 'id -un; swift --version | head -1; flutter --version | head -1; node --version; mobai-dev version; tailscaled --version | head -1'
+          docker run --rm "$img" bash -lc 'MOBAI_DEV_NO_UPDATE_CHECK=1 mobai-dev engines list --json' | tee engines.json
+          for e in swiftui flutter rn; do
+            jq -e --arg e "$e" '.engines[] | select(.name == $e) | .installed == true' engines.json >/dev/null || { echo "engine $e is not installed"; exit 1; }
+          done
+          for f in swiftui flutter react-native; do
+            docker run --rm "$img" bash -lc "cd \$(mktemp -d) && MOBAI_DEV_NO_UPDATE_CHECK=1 mobai-dev setup --framework $f --json" > "setup-$f.json" || true
+            jq -r '.toolchains[] | "\(.name): \(.present)"' "setup-$f.json"
+            missing=$(jq -r '[.toolchains[] | select(.present == false) | .name] | map(select(. != "account" and . != "apple-design-resources")) | join(",")' "setup-$f.json")
+            [ -z "$missing" ] || { echo "setup --framework $f still wants: $missing"; exit 1; }
+          done
+          docker image inspect "$img" --format '{{.Size}}' | awk '{printf "image size: %.1f GB\n", $1/1e9}'
+
+      - name: Push
+        if: ${{ inputs.push != false }}
+        run: |
+          docker push ghcr.io/mobai-app/mobai-dev:${{ steps.version.outputs.version }}
+          docker push ghcr.io/mobai-app/mobai-dev:latest

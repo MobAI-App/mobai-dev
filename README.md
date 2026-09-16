@@ -75,6 +75,28 @@ desktop app, or a sign-in from the session with an emailed code, which creates
 the account when the email is new. The desktop app is needed only for your
 own phone.
 
+### The prebuilt environment image
+
+`ghcr.io/mobai-app/mobai-dev` is the whole environment, installed and waiting
+for your app: the Swift toolchain, Flutter, Node, the three preview engines,
+the adapters catalogue, mobai-dev with its skills, and tailscale, on Ubuntu
+24.04 as the `ubuntu` user. It is tagged by mobai-dev version
+(`1.2.0`, `latest`); the toolchain versions are image labels. Nothing in it is
+yours: the account, the tailnet, secrets and Apple's fonts are set up at first
+start, the same as with the script. Where it fits:
+
+- **Cursor cloud agents**: `FROM` it in `.cursor/Dockerfile`, see the Cursor
+  section below.
+- **Devcontainers** (Claude Code, GitHub Codespaces, VS Code):
+  [integrations/devcontainer/devcontainer.json](integrations/devcontainer/devcontainer.json)
+  uses it as the image and adds Claude Code through Anthropic's own feature.
+- **Codex Cloud and Claude Code on the web** take no custom image; use the
+  setup script there.
+- **Anything that runs a container**: `docker run -it ghcr.io/mobai-app/mobai-dev:1.2.0`.
+
+The image is built by [.github/workflows/image.yml](.github/workflows/image.yml)
+from [docker/Dockerfile](docker/Dockerfile).
+
 <details>
 <summary><b>Claude Code</b></summary>
 
@@ -118,13 +140,21 @@ pdomnyovfhqsjhgtixub.supabase.co
 <details>
 <summary><b>Cursor</b></summary>
 
-In `.cursor/environment.json`, set the install command to:
+Cursor builds its cloud environment from a Dockerfile in your repository, so
+the fastest path is the prebuilt image: copy
+[integrations/cursor/Dockerfile](integrations/cursor/Dockerfile) and
+[integrations/cursor/environment.json](integrations/cursor/environment.json)
+into your repository's `.cursor/` directory. The Dockerfile is one line,
+`FROM ghcr.io/mobai-app/mobai-dev:1.2.0`, and the environment file sets the
+install and start commands below.
+
+Without the image, in `.cursor/environment.json` set the install command to:
 
 ```bash
 curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
-Put these in the environment's secrets:
+Either way, put these in the environment's secrets:
 
 ```
 MOBAI_API_KEY=<your mobai API key>

@@ -1,0 +1,15 @@
+{
+  "name": "mobai-dev",
+  "image": "ghcr.io/mobai-app/mobai-dev:1.2.0",
+  "remoteUser": "ubuntu",
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "postCreateCommand": "curl -fsSL https://mobai.run/cloud/install.sh | sh",
+  "postStartCommand": "$HOME/.mobai/bin/mobai-up || true",
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"]
+    }
+  }
+}
