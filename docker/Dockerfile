@@ -25,6 +25,8 @@ FROM ubuntu:24.04
 
 ARG MOBAI_VERSION=1.3.0
 ARG SWIFT_VERSION=6.3.3
+# Pinned: swiftly 1.2.0 writes an env.sh that /bin/sh cannot source.
+ARG SWIFTLY_VERSION=1.1.4
 ARG FLUTTER_VERSION=3.41.0
 ARG NODE_MAJOR=20
 ARG PLAYWRIGHT_VERSION=1.56.0
@@ -99,8 +101,8 @@ RUN git config --global --add safe.directory "${FLUTTER_ROOT}" \
 # Swift through swiftly, exactly as `mobai-dev setup` installs it, so the
 # shims, the environment file and the .bashrc line are where setup and the
 # engine's launcher look for them.
-RUN cd /tmp && curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz" \
-    && tar zxf "swiftly-$(uname -m).tar.gz" \
+RUN cd /tmp && curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-${SWIFTLY_VERSION}-$(uname -m).tar.gz" \
+    && tar zxf "swiftly-${SWIFTLY_VERSION}-$(uname -m).tar.gz" \
     && ./swiftly init --quiet-shell-followup --assume-yes --skip-install \
     && . "$HOME/.local/share/swiftly/env.sh" \
     && swiftly install "${SWIFT_VERSION}" --use --assume-yes \
