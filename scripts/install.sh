@@ -24,7 +24,7 @@
 # The version is pinned rather than resolved from "latest": resolving is a
 # server-side redirect some sandboxes refuse (Codex returns 403 for it), while a
 # plain asset download works everywhere. Bump this on every release.
-MOBAI_VERSION=1.2.0
+MOBAI_VERSION=1.3.0
 
 set -eu
 
@@ -636,6 +636,27 @@ An unsigned .ipa will not install on a physical device.
   signing is usually unavailable here: build unsigned, and tell the user to
   sign and install from a machine that has the artifacts, or to put the IOS_*
   signing secrets on the CI runner so the build itself comes out signed.
+
+## Ship to TestFlight or the App Store
+
+Shipping is a different signing and a different path from the phone install
+above: the releasing-to-app-store skill is the full guide. The short form:
+
+    mobai-dev asc status --json                                  # is an App Store Connect API key configured
+    mobai-dev signing setup --distribution store --yes --json    # once per app, after the user says yes
+    mobai-dev release --profile store --group "Beta" --json      # build, upload, TestFlight
+    mobai-dev release --profile store --app-store --json         # build, upload, App Review
+
+The key is an App Store Connect API key (ASC_ISSUER_ID, ASC_KEY_ID and
+ASC_PRIVATE_KEY or ASC_KEY_PATH as secrets, or mobai-dev asc login), never an
+Apple ID password; ASC_KEY_MISSING says how to get one. signing setup creates
+a certificate in the user's Apple account and --app-store files a real review:
+confirm both with the user first, and walk the skill's checklist before the
+first review. mobai-dev asc lists apps, builds, TestFlight groups, testers and
+the team. The upload talks to api.appstoreconnect.apple.com directly and needs
+no GitHub API; whether a sandbox lets that host through is its network policy,
+and a blocked one shows as ASC_REQUEST_FAILED with a connection error. The
+build before it follows the rules above.
 MOBAI_SKILL
 }
 for d in $SKILL_ROOTS; do

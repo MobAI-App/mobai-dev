@@ -1,6 +1,6 @@
 {
   "name": "mobai-dev",
-  "image": "ghcr.io/mobai-app/mobai-dev:1.2.0",
+  "image": "ghcr.io/mobai-app/mobai-dev:1.3.0",
   "remoteUser": "ubuntu",
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}

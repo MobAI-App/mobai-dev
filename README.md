@@ -81,7 +81,7 @@ own phone.
 for your app: the Swift toolchain, Flutter, Node, the three preview engines,
 the adapters catalogue, mobai-dev with its skills, and tailscale, on Ubuntu
 24.04 as the `ubuntu` user. It is tagged by mobai-dev version
-(`1.2.0`, `latest`); the toolchain versions are image labels. Nothing in it is
+(`1.3.0`, `latest`); the toolchain versions are image labels. Nothing in it is
 yours: the account, the tailnet, secrets and Apple's fonts are set up at first
 start, the same as with the script. Where it fits:
 
@@ -92,7 +92,7 @@ start, the same as with the script. Where it fits:
   uses it as the image and adds Claude Code through Anthropic's own feature.
 - **Codex Cloud and Claude Code on the web** take no custom image; use the
   setup script there.
-- **Anything that runs a container**: `docker run -it ghcr.io/mobai-app/mobai-dev:1.2.0`.
+- **Anything that runs a container**: `docker run -it ghcr.io/mobai-app/mobai-dev:1.3.0`.
 
 The image is built by [.github/workflows/image.yml](.github/workflows/image.yml)
 from [docker/Dockerfile](docker/Dockerfile).
@@ -145,7 +145,7 @@ the fastest path is the prebuilt image: copy
 [integrations/cursor/Dockerfile](integrations/cursor/Dockerfile) and
 [integrations/cursor/environment.json](integrations/cursor/environment.json)
 into your repository's `.cursor/` directory. The Dockerfile is one line,
-`FROM ghcr.io/mobai-app/mobai-dev:1.2.0`, and the environment file sets the
+`FROM ghcr.io/mobai-app/mobai-dev:1.3.0`, and the environment file sets the
 install and start commands below.
 
 Without the image, in `.cursor/environment.json` set the install command to:
@@ -254,7 +254,54 @@ itself.
 
 ## Publishing
 
-Shipping to TestFlight and the App Store from the sandbox: coming soon.
+The agent can take a build to TestFlight or to App Review from the sandbox.
+The upload and the submission go through the App Store Connect API, so no
+Mac, Transporter or altool is involved; the CI runner only builds and signs.
+
+It needs an App Store Connect API key (App Store Connect > Users and Access >
+Integrations, a team key with role App Manager or Admin), never your Apple
+ID password. Set `ASC_ISSUER_ID`, `ASC_KEY_ID` and `ASC_PRIVATE_KEY` (or
+`ASC_KEY_PATH`) as sandbox secrets, or store the key once:
+
+```sh
+mobai-dev asc login --issuer-id <id> --key-id <id> --key ./AuthKey_XXXX.p8
+```
+
+Store signing is provisioned once, without the developer portal: the bundle
+ID, an Apple Distribution certificate from a key generated in the sandbox,
+the App Store profile, the four `IOS_*_STORE` repository secrets, and a
+`store` profile in `builder.json`. It creates resources in your Apple
+account, so the agent asks before running it:
+
+```sh
+mobai-dev signing setup --distribution store --yes
+```
+
+Then every build is one command:
+
+```sh
+mobai-dev release --profile store --group "Beta Testers" --notes "What to test"
+mobai-dev release --profile store --app-store --release after-approval
+```
+
+It picks the next build number from App Store Connect, builds on your CI
+provider, checks the IPA, uploads it, waits for processing, answers export
+compliance, and adds the build to the TestFlight groups (created when
+missing) or submits the version for review. The pieces are separate verbs
+too: `mobai-dev upload --wait`, `mobai-dev submit --testflight`,
+`mobai-dev submit --app-store`, and `mobai-dev asc` for apps, builds, groups,
+testers and the team. `mobai-dev build --ios --profile <name>` builds with any
+`builder.json` profile.
+
+The `releasing-to-app-store` skill installed beside the binary carries the
+rest: the pre-submission checklist App Review actually rejects on, what each
+App Store Connect status means, and how to read and answer a rejection. The
+listing itself (description, screenshots, pricing, privacy answers) stays
+yours to finish in App Store Connect.
+
+The flows are the ones in [ios-builder](https://github.com/MobAI-App/ios-builder),
+used as a library; its README documents the profiles, signing sets and the
+`builder.json` schema in full.
 
 ## Issues
 
