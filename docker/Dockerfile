@@ -23,7 +23,7 @@
 
 FROM ubuntu:24.04
 
-ARG MOBAI_VERSION=1.3.0
+ARG MOBAI_VERSION=1.3.1
 ARG SWIFT_VERSION=6.3.3
 # Pinned: swiftly 1.2.0 writes an env.sh that /bin/sh cannot source.
 ARG SWIFTLY_VERSION=1.1.4
