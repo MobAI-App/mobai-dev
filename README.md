@@ -144,9 +144,22 @@ Cursor builds its cloud environment from a Dockerfile in your repository, so
 the fastest path is the prebuilt image: copy
 [integrations/cursor/Dockerfile](integrations/cursor/Dockerfile) and
 [integrations/cursor/environment.json](integrations/cursor/environment.json)
-into your repository's `.cursor/` directory. The Dockerfile is one line,
-`FROM ghcr.io/mobai-app/mobai-dev:1.3.1`, and the environment file sets the
-install and start commands below.
+into your repository's `.cursor/` directory and commit them to the default
+branch. The Dockerfile is one line, `FROM ghcr.io/mobai-app/mobai-dev:1.3.1`,
+and the environment file sets the install and start commands below.
+
+The files alone change nothing until Cursor has built them. In the Cloud
+Agents dashboard:
+
+1. Create a new environment and select the repository.
+2. Click **Skip & Save** (not the agent setup, which installs onto Cursor's
+   stock Ubuntu and ignores the Dockerfile).
+3. Open the environment and click **Trigger New Build**, with **Draft build**
+   off. Cursor pulls the image, runs the install command and saves the
+   result.
+4. Agents started after that build run in the image. In one,
+   `echo $FLUTTER_ROOT` prints `/opt/flutter`; empty means the agent is still
+   on the stock image.
 
 Without the image, in `.cursor/environment.json` set the install command to:
 
@@ -154,13 +167,18 @@ Without the image, in `.cursor/environment.json` set the install command to:
 curl -fsSL https://mobai.run/cloud/install.sh | sh
 ```
 
-Either way, put these in the environment's secrets:
+Either way, add these as secrets in the Cursor dashboard, under Cloud Agents,
+Secrets tab. Scope them to the environment above so only its agents get them;
+Cursor hands each one to the agent as an environment variable:
 
 ```
 MOBAI_API_KEY=<your mobai API key>
 MOBAI_TAILSCALE_KEY=<tailscale ephemeral auth key>
 MOBAI_ACCOUNT_EMAIL=<your mobai account email>
 ```
+
+To ship to TestFlight or the App Store from the agent, add the App Store
+Connect key the same way: `ASC_ISSUER_ID`, `ASC_KEY_ID` and `ASC_PRIVATE_KEY`.
 
 Cursor allows all traffic by default, which is the simplest thing to keep.
 If you turned filtering on, allow the hosts listed in the Claude Code
