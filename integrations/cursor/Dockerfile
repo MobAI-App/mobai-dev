@@ -5,4 +5,4 @@
 # Pin the tag to the mobai-dev version you want; the setup script the
 # environment runs at install refreshes mobai-dev to the current build either
 # way.
-FROM ghcr.io/mobai-app/mobai-dev:1.3.3
+FROM ghcr.io/mobai-app/mobai-dev:1.3.4
