@@ -81,7 +81,7 @@ own phone.
 for your app: the Swift toolchain, Flutter, Node, the three preview engines,
 the adapters catalogue, mobai-dev with its skills, and tailscale, on Ubuntu
 24.04 as the `ubuntu` user. It is tagged by mobai-dev version
-(`1.3.1`, `latest`); the toolchain versions are image labels. Nothing in it is
+(`1.3.2`, `latest`); the toolchain versions are image labels. Nothing in it is
 yours: the account, the tailnet, secrets and Apple's fonts are set up at first
 start, the same as with the script. Where it fits:
 
@@ -92,7 +92,7 @@ start, the same as with the script. Where it fits:
   uses it as the image and adds Claude Code through Anthropic's own feature.
 - **Codex Cloud and Claude Code on the web** take no custom image; use the
   setup script there.
-- **Anything that runs a container**: `docker run -it ghcr.io/mobai-app/mobai-dev:1.3.1`.
+- **Anything that runs a container**: `docker run -it ghcr.io/mobai-app/mobai-dev:1.3.2`.
 
 The image is built by [.github/workflows/image.yml](.github/workflows/image.yml)
 from [docker/Dockerfile](docker/Dockerfile).
@@ -145,7 +145,7 @@ the fastest path is the prebuilt image: copy
 [integrations/cursor/Dockerfile](integrations/cursor/Dockerfile) and
 [integrations/cursor/environment.json](integrations/cursor/environment.json)
 into your repository's `.cursor/` directory and commit them to the default
-branch. The Dockerfile is one line, `FROM ghcr.io/mobai-app/mobai-dev:1.3.1`,
+branch. The Dockerfile is one line, `FROM ghcr.io/mobai-app/mobai-dev:1.3.2`,
 and the environment file sets the install and start commands below.
 
 The files alone change nothing until Cursor has built them. In the Cloud
