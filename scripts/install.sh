@@ -18,20 +18,38 @@
 #   MOBAI_TAILSCALE_KEY  an ephemeral Tailscale auth key, only for the phone;
 #                        without it the tailnet is joined by a login link the
 #                        user approves, or not at all
+#   MOBAI_HOME           optional: a writable directory to install into and keep
+#                        mobai's state in, for sandboxes whose home is read-only;
+#                        defaults to $HOME
 # Devices are discovered: mobai asks the API which devices this account
 # onboarded, then exposes the ones currently reachable on the tailnet.
 #
 # The version is pinned rather than resolved from "latest": resolving is a
 # server-side redirect some sandboxes refuse (Codex returns 403 for it), while a
 # plain asset download works everywhere. Bump this on every release.
-MOBAI_VERSION=1.3.4
+MOBAI_VERSION=1.3.5
 
 set -eu
 
 echo "mobai setup: installs mobai-dev, the mobai CLI, tailscale and the agent skills"
 
-BIN="$HOME/.mobai/bin"
-mkdir -p "$BIN"
+# Everything mobai writes for itself goes under MOBAI_HOME (default: the home
+# directory). Checked before any download, so a read-only home fails in one
+# line instead of after a few hundred megabytes.
+MOBAI_HOME="${MOBAI_HOME:-$HOME}"
+BIN="$MOBAI_HOME/.mobai/bin"
+if ! mkdir -p "$BIN" 2>/dev/null || ! touch "$BIN/.write-test" 2>/dev/null; then
+  echo "mobai setup: cannot write to $BIN." >&2
+  echo "  Rerun with MOBAI_HOME set to a writable directory, for example" >&2
+  echo "  MOBAI_HOME=/workspace/.mobai-home, and keep it set for the session." >&2
+  exit 1
+fi
+rm -f "$BIN/.write-test"
+# The generated scripts and skills name ~/.mobai/bin; under a MOBAI_HOME they
+# name the real directory instead. A no-op for the default location.
+shown() {
+  if [ "$BIN" = "$HOME/.mobai/bin" ]; then cat; else sed "s#~/\.mobai/bin#$BIN#g"; fi
+}
 case "$(uname -m)" in
   x86_64)          ARCH=amd64 ;;
   aarch64|arm64)   ARCH=arm64 ;;
@@ -108,10 +126,13 @@ fi
 #    downloaded above, so this is a two-line shim rather than an npm install:
 #    no package manager to depend on, and the CLI and its skills are always the
 #    same version as mobai-dev instead of whatever npm last published.
-cat > "$BIN/mobai" <<'MOBAI_SHIM'
-#!/bin/sh
-exec "$HOME/.mobai/bin/mobai-dev" cli "$@"
-MOBAI_SHIM
+# Under a MOBAI_HOME the shim carries it, so a shell without the variable
+# still keeps mobai's files out of the read-only home.
+{
+  printf '#!/bin/sh\n'
+  [ "$MOBAI_HOME" = "$HOME" ] || printf 'export MOBAI_HOME="%s"\n' "$MOBAI_HOME"
+  printf 'exec "%s/mobai-dev" cli "$@"\n' "$BIN"
+} > "$BIN/mobai"
 chmod +x "$BIN/mobai"
 
 # The skill also brings the DSL and .mob references to disk, which is how an
@@ -121,7 +142,10 @@ chmod +x "$BIN/mobai"
 # and Grok Bot ~/.cursor/skills, Codex ~/.agents/skills.
 SKILL_ROOTS="$HOME/.claude/skills $HOME/.cursor/skills $HOME/.agents/skills"
 for d in $SKILL_ROOTS; do
-  mkdir -p "$d"
+  if ! mkdir -p "$d" 2>/dev/null; then
+    echo "note: $d is not writable, so the agent there will not see the mobai CLI skill" >&2
+    continue
+  fi
   "$BIN/mobai" skills install "$d" >/dev/null 2>&1 \
     || echo "note: could not install the mobai CLI skill into $d" >&2
 done
@@ -132,7 +156,7 @@ done
 #    when mobai itself failed to come up; it exits 0 once mobai serves, phone
 #    or not, and a Tailscale login link the user may approve or skip comes
 #    with that 0.
-cat > "$BIN/mobai-up" <<'MOBAI_UP'
+shown > "$BIN/mobai-up" <<'MOBAI_UP'
 #!/bin/sh
 # mobai-up: bring mobai up for this agent session. Written by the setup
 # script as ~/.mobai/bin/mobai-up. Environment first, then the stored state,
@@ -151,8 +175,11 @@ cat > "$BIN/mobai-up" <<'MOBAI_UP'
 # Safe to run repeatedly. Exit 1 means a human step is needed and the output
 # says which; exit 0 means mobai is serving, with or without a phone.
 set -eu
-BIN="$HOME/.mobai/bin"
-STATE="$HOME/.mobai"
+# Wherever setup put it: ~/.mobai/bin, or $MOBAI_HOME/.mobai/bin. The state
+# sits next to it, and mobai-dev keeps its own files there too.
+BIN="$(cd "$(dirname "$0")" && pwd)"
+STATE="$(dirname "$BIN")"
+[ "$STATE" = "$HOME/.mobai" ] || export MOBAI_HOME="$(dirname "$STATE")"
 # Logs and state hold a login URL and the node's identity; nobody else on the
 # box needs to read them.
 umask 077
@@ -364,7 +391,7 @@ chmod +x "$BIN/mobai-up"
 #    session starts. Only Claude Code reads ~/.claude/settings.json; on the
 #    other platforms the file is inert, and the skills below carry the same
 #    guidance. Kept fast and read-only; the bring-up stays in mobai-up.
-cat > "$BIN/mobai-hook" <<'MOBAI_HOOK'
+shown > "$BIN/mobai-hook" <<'MOBAI_HOOK'
 #!/bin/sh
 devs=$(curl -fsS http://127.0.0.1:8686/api/v1/devices 2>/dev/null || echo "")
 if [ -n "$devs" ] && [ "$devs" != "[]" ]; then
@@ -379,8 +406,9 @@ MOBAI_HOOK
 chmod +x "$BIN/mobai-hook"
 
 SETTINGS="$HOME/.claude/settings.json"
-mkdir -p "$HOME/.claude"
-if [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then
+if ! mkdir -p "$HOME/.claude" 2>/dev/null; then
+  echo "note: $HOME/.claude is not writable, so Claude Code gets no session hook" >&2
+elif [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then
   # Merge, never clobber: the sandbox may have its own settings already.
   python3 - "$SETTINGS" "$BIN/mobai-hook" <<'MOBAI_PY'
 import json, sys
@@ -417,7 +445,7 @@ fi
 #     the workspace's .cursor/rules (kept out of git through .git/info/exclude,
 #     so it never lands in a commit). Claude Code has the session hook above.
 write_pointer() {
-  cat <<MOBAI_POINTER
+  shown <<MOBAI_POINTER
 ## MobAI is installed in this sandbox
 
 mobai-dev (~/.mobai/bin/mobai-dev) previews Flutter, React Native and SwiftUI
@@ -437,8 +465,9 @@ MOBAI_POINTER
 }
 
 CODEX_AGENTS="$HOME/.codex/AGENTS.md"
-mkdir -p "$HOME/.codex"
-if ! grep -qs 'MobAI is installed in this sandbox' "$CODEX_AGENTS"; then
+if ! mkdir -p "$HOME/.codex" 2>/dev/null; then
+  echo "note: $HOME/.codex is not writable, so Codex gets no AGENTS.md pointer" >&2
+elif ! grep -qs 'MobAI is installed in this sandbox' "$CODEX_AGENTS"; then
   { [ -s "$CODEX_AGENTS" ] && printf '\n'; write_pointer codex; } >> "$CODEX_AGENTS"
 fi
 
@@ -460,7 +489,7 @@ fi
 # 6. The mobai-devices skill: sign-in, tailnet, phone, builds, in the order
 #    an agent meets them. Written into every skills root, like the CLI skill.
 write_skill() {
-cat > "$1" <<'MOBAI_SKILL'
+shown > "$1" <<'MOBAI_SKILL'
 ---
 name: mobai-devices
 description: Drive the user's own iPhone from this sandbox - screenshots, taps, app install, UI tests on a real device. Use when asked to run, test, install or debug an iOS app on a device. Also load it the moment something is off - mobai devices returns an empty list, a phone does not appear, the log says connect failed or pairing rejected, a command answers AUTH_REQUIRED - before reading logs or binaries; those cases are covered here.
@@ -660,7 +689,7 @@ build before it follows the rules above.
 MOBAI_SKILL
 }
 for d in $SKILL_ROOTS; do
-  mkdir -p "$d/mobai-devices"
+  mkdir -p "$d/mobai-devices" 2>/dev/null || continue
   write_skill "$d/mobai-devices/SKILL.md"
 done
 
@@ -679,7 +708,7 @@ if [ -z "${MOBAI_API_KEY:-}" ] && ! "$BIN/mobai-dev" login >/dev/null 2>&1; then
   echo "MOBAI_ACCOUNT_EMAIL in the environment saves the agent asking for the email." >&2
 fi
 
-cat <<'DONE'
+shown <<'DONE'
 
 installed: mobai-dev, the mobai CLI, tailscale, ~/.mobai/bin/mobai-up, and the
 mobai-devices and using-mobai-cli skills
